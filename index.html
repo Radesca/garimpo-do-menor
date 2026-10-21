@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Garimpo do Menor</title>
+<meta name="description" content="Jogo para aprender selection sort: ache a menor gema, leve para a vitrine e dispute com a turma.">
+<meta name="theme-color" content="#150B2E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='25,15 75,15 95,38 50,92 5,38' fill='%23FFC93C'/%3E%3Cpolygon points='25,15 75,15 50,38' fill='%23fff' opacity='.5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"></div>
+<div class="fx" id="fx" aria-hidden="true"></div>
+
+<main class="app">
+
+  <!-- Tela inicial -->
+  <section id="start" class="screen">
+    <div class="hero">
+      <h1 class="logo">Garimpo<span>do Menor</span></h1>
+      <p class="tag">Ache a menor gema, leve para a vitrine e ordene tudo da menor para a maior.</p>
+      <div class="deco" id="deco" aria-hidden="true"></div>
+    </div>
+    <div class="setup">
+      <div class="modes">
+        <button class="mode" data-mode="treino" aria-pressed="true"><b>Treino</b><span>Gemas à vista e sem pressa. Ótimo para aprender.</span></button>
+        <button class="mode" data-mode="desafio" aria-pressed="false"><b>Desafio</b><span>Gemas escondidas em pedras. Corra contra o Robô.</span></button>
+      </div>
+      <div class="opts">
+        <div class="grp">Gemas
+          <span class="chips" role="group" aria-label="Quantidade de gemas">
+            <button class="chip" data-n="5" aria-pressed="false">5</button><button class="chip" data-n="7" aria-pressed="true">7</button><button class="chip" data-n="9" aria-pressed="false">9</button>
+          </span></div>
+        <div class="grp" id="botGrp" hidden>Robô
+          <span class="chips" role="group" aria-label="Velocidade do robô">
+            <button class="chip" data-bot="calmo" aria-pressed="false">Calmo</button><button class="chip" data-bot="normal" aria-pressed="true">Normal</button><button class="chip" data-bot="turbo" aria-pressed="false">Turbo</button>
+          </span></div>
+        <label class="twin" for="twins"><input type="checkbox" id="twins"> Gemas gêmeas (pegadinha)</label>
+      </div>
+      <div class="go">
+        <button class="btn b-gold b-big" id="play">Jogar</button>
+        <button class="btn b-sky" id="roomBtn" style="font-size:18px;padding:12px 26px 14px">Jogar em sala</button>
+        <button class="btn b-ghost" id="howBtn" style="font-size:16px;padding:10px 22px 12px">Como jogar</button>
+        <p class="best" id="best"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Como jogar -->
+  <section id="how" class="screen" hidden>
+    <div class="how">
+      <h2 id="howTitle"></h2>
+      <div class="stage" id="stage"></div>
+      <p id="howText"></p>
+      <div class="dots" id="dots"></div>
+      <div class="nav">
+        <button class="btn b-ghost" id="skip" style="font-size:16px;padding:10px 20px 12px">Pular</button>
+        <button class="btn b-gold" id="next" style="font-size:20px">Próximo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Jogo -->
+  <section id="game" class="screen" hidden>
+    <div class="hud">
+      <button class="icon" id="back" aria-label="Voltar ao menu"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="prog">
+        <div class="progbar"><i id="progFill"></i></div>
+        <div class="progtxt" id="progTxt"></div>
+      </div>
+      <div class="score"><span id="score">0</span><small>pontos</small></div>
+      <button class="icon" id="snd" aria-label="Som" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path id="sndWave" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
+    </div>
+
+    <div class="race" id="race">
+      <div class="lane"><span id="lMe">Você</span><span class="track"><i class="fill me" id="fMe"></i></span></div>
+      <div class="lane"><span id="lBot">Robô</span><span class="track"><i class="fill bot" id="fBot"></i></span></div>
+      <p class="racemsg" id="raceMsg"></p>
+    </div>
+
+    <div class="roomlive" id="roomLive" hidden></div>
+
+    <div class="coach">
+      <svg class="mascot" id="mascot" viewBox="0 0 80 80" aria-hidden="true">
+        <circle cx="40" cy="48" r="26" fill="#FFD9A8"/>
+        <path d="M12 42a28 28 0 0156 0z" fill="#FFC93C"/>
+        <rect x="8" y="40" width="64" height="8" rx="4" fill="#F5A623"/>
+        <circle class="lamp" cx="40" cy="22" r="8" fill="#FFF6C2"/><circle cx="40" cy="22" r="3.5" fill="#fff"/>
+        <g class="eyes"><ellipse cx="31" cy="56" rx="3.5" ry="4.5" fill="#2B1458"/><ellipse cx="49" cy="56" rx="3.5" ry="4.5" fill="#2B1458"/></g>
+        <path class="m-happy" d="M32 67q8 8 16 0" stroke="#2B1458" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path class="m-sad" d="M32 72q8-8 16 0" stroke="#2B1458" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="bubble">
+        <div class="round" id="round"></div>
+        <p class="prompt" id="prompt"></p>
+        <p class="fb" id="fb" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div class="board" id="board" aria-label="Mesa de gemas">
+      <div class="streak" id="streak" hidden></div>
+      <div class="table" id="table">
+        <div class="gems" id="gems"></div>
+        <div class="shelf" id="shelf"></div>
+        <div class="lanes" id="lanes">
+          <div class="mkr" data-k="vaga"><span class="pill pv"><svg viewBox="0 0 24 24"><path d="M12 4v14M6 12l6 6 6-6"/></svg><span class="t">Vaga</span></span></div>
+          <div class="mkr" data-k="menor"><span class="pill pm"><svg viewBox="0 0 24 24"><path d="M6 21V4M6 5h12l-3 4 3 4H6"/></svg><span class="t">Menor</span></span></div>
+          <div class="mkr" data-k="lupa"><span class="pill pl"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg><span class="t">Lupa</span></span></div>
+        </div>
+        <p class="legend">
+          <span><b style="background:#fff"></b>Vaga: próxima posição da vitrine</span>
+          <span><b style="background:var(--gold)"></b>Menor até agora</span>
+          <span><b style="background:var(--sky)"></b>Lupa: gema em comparação</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="actions" id="action">
+      <button class="btn b-gold" data-act="keep"><span>Manter a menor</span><small>a bandeira fica onde está</small></button>
+      <button class="btn b-sky" data-act="move"><span>Nova menor!</span><small>a da lupa é menor</small></button>
+      <button class="btn b-mint swap" data-act="swap"></button>
+    </div>
+    <p class="kbd" id="kbd"><kbd>←</kbd> manter &nbsp; <kbd>→</kbd> nova menor ou trocar</p>
+
+    <section class="result" id="result" hidden></section>
+
+    <details class="algo">
+      <summary>Ver o algoritmo por trás</summary>
+      <div class="code" id="code">
+        <div class="ln" data-l="1">para i de 0 até n−2:</div>
+        <div class="ln" data-l="2">    menor ← i</div>
+        <div class="ln" data-l="3">    para j de i+1 até n−1:</div>
+        <div class="ln" data-l="4">        se v[j] &lt; v[menor]: menor ← j</div>
+        <div class="ln" data-l="5">    se menor ≠ i: trocar v[i] ↔ v[menor]</div>
+      </div>
+      <p class="vars" id="vars"></p>
+    </details>
+  </section>
+  <!-- Sala: entrar ou criar -->
+  <section id="roomHome" class="screen" hidden>
+    <div class="how">
+      <h2>Sala da turma</h2>
+      <p>Todo mundo joga a mesma sequência ao mesmo tempo. Quem fizer mais pontos ganha!</p>
+      <form class="roomform" id="joinForm" autocomplete="off">
+        <label for="joinCode">Código da sala<input id="joinCode" maxlength="4" autocapitalize="characters" placeholder="ABCD"></label>
+        <label for="joinName">Seu apelido<input id="joinName" maxlength="14" placeholder="Como te chamam?"></label>
+        <button class="btn b-gold" type="submit">Entrar na sala</button>
+      </form>
+      <p class="roomerr" id="roomErr" role="alert"></p>
+      <details class="algo adm">
+        <summary>Sou o professor</summary>
+        <form class="roomform" id="hostForm" autocomplete="off">
+          <label for="hostPin">PIN do professor<input id="hostPin" type="password" inputmode="numeric" placeholder="PIN"></label>
+          <button class="btn b-sky" type="submit">Criar sala</button>
+          <button class="btn b-ghost" type="button" id="reopen" hidden></button>
+        </form>
+      </details>
+      <button class="btn b-ghost" id="roomBack" style="font-size:16px;padding:10px 22px 12px">Voltar</button>
+    </div>
+  </section>
+
+  <!-- Sala: espera do jogador e pódio -->
+  <section id="roomWait" class="screen" hidden>
+    <div class="how">
+      <h2 id="waitTitle"></h2>
+      <p id="waitMsg"></p>
+      <div id="waitPodium" style="width:100%"></div>
+      <ul class="rank" id="waitRank"></ul>
+      <button class="btn b-ghost" id="waitExit" style="font-size:16px;padding:10px 22px 12px">Sair da sala</button>
+    </div>
+  </section>
+
+  <!-- Sala: painel do professor (projetar no telão) -->
+  <section id="admin" class="screen" hidden>
+    <div class="adm-head">
+      <div>
+        <div class="lbl">Entre em</div>
+        <div class="admurl" id="admUrl"></div>
+        <div class="lbl">ou digite o código</div>
+        <div class="bigcode" id="admCode"></div>
+      </div>
+      <div class="qrbox" id="admQr" aria-label="QR code da sala"></div>
+    </div>
+    <div class="admctl">
+      <p class="admstatus" id="admStatus"></p>
+      <div class="grp" id="admChips">Gemas
+        <span class="chips" role="group" aria-label="Quantidade de gemas da rodada">
+          <button class="chip" data-an="5" aria-pressed="false">5</button><button class="chip" data-an="7" aria-pressed="true">7</button><button class="chip" data-an="9" aria-pressed="false">9</button>
+        </span></div>
+      <div class="admbtns">
+        <button class="btn b-gold" id="admStart">Iniciar rodada 1</button>
+        <button class="btn b-ghost" id="admEnd" style="font-size:16px">Encerrar e ver pódio</button>
+      </div>
+    </div>
+    <div id="admPodium"></div>
+    <ul class="rank" id="admRank"></ul>
+    <p style="text-align:center;margin-top:20px"><button class="btn b-ghost" id="admExit" style="font-size:15px;padding:10px 20px 12px"></button></p>
+  </section>
+</main>
+
+<div class="cd" id="cd" hidden aria-live="assertive"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="firebase-config.js"></script>
+<script src="js/config.js"></script>
+<script src="js/util.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/gems.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/robot.js"></script>
+<script src="js/screens.js"></script>
+<script src="js/game.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/rooms.js"></script>
+
+</body>
+</html>
