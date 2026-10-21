@@ -2,3 +2,4 @@
 docs
 README.md
 firebase-config.example.js
+.env*
