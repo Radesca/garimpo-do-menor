@@ -1,0 +1,10 @@
+# Configuração real da sala (chaves e PIN): nunca vai para o GitHub
+firebase-config.js
+
+# Vercel e Node
+.vercel/
+node_modules/
+
+# Sistema
+.DS_Store
+Thumbs.db
