@@ -251,10 +251,10 @@
   Garimpo.Rooms = {
     progress:function(S){
       if(!ref || isAdmin) return;
-      var snap = [S.score, S.rounds, S.errors].join();
+      var snap = [S.rankScore, S.rounds, S.errors].join();
       if(snap===lastSnap) return;
       lastSnap = snap;
-      ref.child('players/'+pid).update({ score:S.score, progress:S.rounds/(S.n-1), errors:S.errors });
+      ref.child('players/'+pid).update({ score:S.rankScore, progress:S.rounds/(S.n-1), errors:S.errors });
     },
     finish:function(S){
       if(!ref || isAdmin) return;

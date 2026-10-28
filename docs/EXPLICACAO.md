@@ -133,3 +133,24 @@ rooms/ABCD
 | O desenho das gemas (ex.: sapos) | `gemSVG()` e `ROCK` em `js/gems.js` |
 | As regras de estrelas | `starsFor()` em `js/game.js` |
 | A quantidade de gemas | botões `data-n` no `index.html` |
+
+---
+
+## 7. A pontuação
+
+**Pontos das jogadas** (todos os modos), com os valores em `Garimpo.RULES` (`js/config.js`):
+- Acerto: +10, mais +5 por acerto seguido (até +30 extras).
+- Levar a menor para a vitrine: +50 (ou +70 se ela já estava no lugar).
+- Erro: −10 pontos e a sequência cai pela metade.
+
+**Nota final no Desafio e na sala** (`speedScore()` em `js/game.js`):
+
+```
+nota final = pontos das jogadas × 60 ÷ segundos jogados      (pontos por minuto)
+```
+
+- Não há tempo de referência nem robô na conta: quanto mais rápido e mais certeiro, maior a nota.
+- Depois de um erro no Desafio os botões travam por 1,5 s (`ERROR_LOCK_MS`). O erro custa tempo, e isso impede que chutar rápido compense.
+- Na sala o ranking soma as notas das rodadas. Quem ainda está jogando aparece com uma estimativa, que se acerta ao terminar.
+- No Treino não há relógio, então a nota é só a soma dos pontos das jogadas.
+- A corrida contra o robô só decide "venceu o robô" e as estrelas, e não entra na nota.

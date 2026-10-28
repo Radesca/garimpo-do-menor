@@ -61,10 +61,11 @@ Garimpo.Game = (function(){
 
     S = { n:n, room:!!room, vals:vals, order:order, i:0, min:0, j:1, phase:'scan',
           comps:0, swaps:0, skipped:0, rounds:0, errors:0, streak:0, bestStreak:0, score:0,
-          t0:0, elapsed:0, busy:false, fb:null, won:false, botNotified:false,
+          t0:0, elapsed:0, busy:false, lockedUntil:0, fb:null, won:false, botNotified:false,
           totalComps:n * (n - 1) / 2, bot:bot };
 
     shownScore = 0; $('#score').textContent = '0';
+    U.$$('#action .btn').forEach(function(b){ b.disabled = false; });
     $('#streak').hidden = true;
     Fx.clear();
     build();
@@ -126,7 +127,7 @@ Garimpo.Game = (function(){
     $('#progFill').style.width = Math.round(sorted / n * 100) + '%';
     paintAction();
     paintSide();
-    if(S.room && Garimpo.Rooms) Garimpo.Rooms.progress(S);
+    notifyRoom();
   }
 
   function paintAction(){
@@ -257,18 +258,50 @@ Garimpo.Game = (function(){
     S.bestStreak = Math.max(S.bestStreak, S.streak);
   }
 
+  /* ---------- nota por velocidade ---------- */
+
+  // Há relógio correndo (Desafio e sala)? No Treino a nota é só a soma das jogadas.
+  function timed(){ return cfg.mode === 'desafio' && S.t0 > 0; }
+
+  // Pontos das jogadas por minuto de jogo. Não precisa de tempo de referência.
+  function speedScore(points){
+    var seconds = Math.max(S.elapsed, RULES.MIN_TIME_MS) / 1000;
+    return Math.round(points * 60 / seconds);
+  }
+
+  // Durante a rodada da sala o ranking mostra uma estimativa da nota final.
+  function notifyRoom(){
+    if(!S.room || !Garimpo.Rooms) return;
+    S.rankScore = timed() ? speedScore(S.score) : S.score;
+    Garimpo.Rooms.progress(S);
+  }
+
+  // Depois de um erro no Desafio os botões travam um instante: errar custa tempo, então chutar não compensa.
+  function isLocked(){ return performance.now() < S.lockedUntil; }
+  function lockButtons(ms){
+    var until = S.lockedUntil = performance.now() + ms;
+    var buttons = U.$$('#action .btn');
+    buttons.forEach(function(b){ b.disabled = true; });
+    setTimeout(function(){
+      if(!S || S.lockedUntil !== until) return;
+      buttons.forEach(function(b){ b.disabled = false; });
+      var visible = buttons.filter(function(b){ return !b.hidden; })[0];
+      if(visible && document.activeElement === document.body) visible.focus({ preventScroll: true });
+    }, ms);
+  }
+
   /* ---------- as jogadas ---------- */
 
   // "Manter a menor" (keep) ou "Nova menor!" (move). É a comparação v[j] < v[menor] do algoritmo.
   function decide(choice){
-    if(S.phase !== 'scan' || S.busy) return;
+    if(S.phase !== 'scan' || S.busy || isLocked()) return;
     startClock();
     var vj = val(S.j), vm = val(S.min), smaller = vj < vm;
     var correct = (choice === 'move') === smaller;
     var gem = slotAt(S.j);
 
     if(!correct){
-      S.errors++; S.streak = 0; showStreak();
+      S.errors++; S.streak = Math.floor(S.streak * RULES.STREAK_KEEP); showStreak();
       setScore(Math.max(0, S.score - RULES.PENALTY));
       Fx.floatText(gem, '-' + RULES.PENALTY, '#FF5C6C'); Fx.burst(gem, '#FF5C6C', 8);
       flash(gem, 'wrong', 500); flash($('#board'), 'shake', 400);
@@ -276,7 +309,8 @@ Garimpo.Game = (function(){
       say(choice === 'move'
         ? (vj === vm ? vj + ' = ' + vm + ': empate não troca a bandeira. Tente de novo!' : vj + ' não é menor que ' + vm + '. Tente de novo!')
         : vj + ' é menor que ' + vm + ': a bandeira vai para a lupa. Tente de novo!', 'bad');
-      paintAction(); paintSide();
+      paintAction(); paintSide(); notifyRoom();
+      if(cfg.mode === 'desafio') lockButtons(RULES.ERROR_LOCK_MS);
       return;
     }
 
@@ -296,7 +330,7 @@ Garimpo.Game = (function(){
 
   // Leva a menor para a vaga: trocar v[i] ↔ v[menor] (ou fixar, se já estava lá).
   function swapStep(){
-    if(S.phase !== 'swap' || S.busy) return;
+    if(S.phase !== 'swap' || S.busy || isLocked()) return;
     startClock();
     var a = S.i, b = S.min;
 
@@ -369,13 +403,13 @@ Garimpo.Game = (function(){
   }
 
   function finish(){
-    // Bônus de velocidade: quanto mais cedo que o robô, mais pontos.
-    var bonus = (cfg.mode === 'desafio' && S.t0) ? Math.max(0, Math.round((S.bot.total - S.elapsed) / RULES.TIME_BONUS_DIV)) : 0;
-    setScore(S.score + bonus);
+    // No Desafio a nota final é a velocidade de pontuação (pontos das jogadas por minuto).
+    S.points = S.score;
+    if(timed()) setScore(speedScore(S.points));
     var isBest = !S.room && S.score > U.best.get(cfg);
     if(isBest) U.best.save(cfg, S.score);
 
-    $('#result').innerHTML = resultHTML(starsFor(), bonus, isBest);
+    $('#result').innerHTML = resultHTML(starsFor(), isBest);
     if(S.room && Garimpo.Rooms) Garimpo.Rooms.finish(S);
     $('#streak').hidden = true;
     mood('cheer'); Sound.play('win'); Fx.rain();
@@ -385,16 +419,19 @@ Garimpo.Game = (function(){
     cells.forEach(function(el, k){ setTimeout(function(){ Fx.burst(el, ['#FFC93C', '#fff'], 6); }, 120 * k); });
   }
 
-  function resultHTML(stars, bonus, isBest){
+  function resultHTML(stars, isBest){
     var n = S.n, h = '<h2>Vitrine completa!</h2><div class="stars" aria-label="' + stars + ' de 3 estrelas">';
     for(var k = 0; k < 3; k++) h += '<span class="star' + (k < stars ? ' on' : '') + '" style="--d:' + (.3 + k * .25) + 's">★</span>';
-    h += '</div><div class="final"><small>Pontuação final</small><span id="finalScore">' + S.score + '</span></div>';
+    h += '</div><div class="final"><small>' + (timed() ? 'Pontuação final · pontos por minuto' : 'Pontuação final') + '</small><span id="finalScore">' + S.score + '</span></div>';
     if(isBest) h += '<span class="newbest">Novo recorde!</span>';
 
     h += '<ul class="facts">';
+    if(timed()){
+      h += '<li><b>Nota por velocidade:</b> ' + S.points + ' pontos em ' + U.fmt(S.elapsed) + ' = <b>' + S.score + ' pontos por minuto</b>.</li>';
+    }
     if(cfg.mode === 'desafio' && !S.room){
       h += '<li><b>' + (S.won ? 'Você venceu o Robô!' : 'O Robô chegou primeiro.') + '</b> Seu tempo: ' + U.fmt(S.elapsed) +
-           '. Ele levaria ' + U.fmt(S.bot.total) + '.' + (bonus ? ' Bônus de velocidade: +' + bonus + '.' : '') + '</li>';
+           '. Ele levaria ' + U.fmt(S.bot.total) + '.</li>';
     }
     h += '<li><b>' + S.comps + ' comparações.</b> Sempre n(n−1)/2 = ' + S.totalComps + ', não importa a ordem inicial. Por isso o custo é O(n²).</li>';
     h += '<li><b>' + S.swaps + ' trocas</b> (máximo ' + (n - 1) + ').' +
