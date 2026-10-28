@@ -1,4 +1,4 @@
-# Garimpo do Menor: guia do código
+﻿# Garimpo do Menor: guia do código
 
 O jogo é feito só com HTML, CSS e JavaScript puros, sem bibliotecas (o Firebase e o gerador de QR são carregados por CDN, só para a sala).
 
@@ -35,7 +35,7 @@ No jogo, **você é o algoritmo**:
 | `i` | **Vaga** (primeira posição livre da vitrine) |
 | `menor` | **Bandeira dourada** |
 | `j` | **Lupa azul** |
-| `se v[j] < v[menor]` | Botões **Manter a menor** / **Nova menor!** |
+| `se v[j] < v[menor]` | Botões **Manter o menor atual** / **Atualizar o menor** |
 | `trocar v[i] ↔ v[menor]` | Botão **Levar para a vitrine!** |
 
 Por que é O(n²): as comparações são sempre n(n−1)/2, não importa a ordem inicial. As trocas são no máximo n−1. A tela final mostra os dois números.
