@@ -1,4 +1,4 @@
-# Garimpo do Menor
+﻿# Garimpo do Menor
 
 Jogo para aprender **selection sort** (ordenação por seleção). Você é o algoritmo: em cada rodada, procura a menor gema entre as que ainda não estão ordenadas e a leva para a primeira vaga livre da vitrine. Feito para apresentar em seminário, com uma versão em sala para a turma competir.
 
@@ -10,7 +10,7 @@ Sem dependências, sem build: HTML, CSS e JavaScript puros.
 - **Desafio:** gemas escondidas em pedras e uma corrida contra o Robô (níveis Calmo, Normal e Turbo).
 - **Pegadinha:** duas gemas com o mesmo número, para mostrar que o selection sort **não é estável**.
 - **Sala da turma:** o professor cria uma sala com código e QR, todos jogam a mesma sequência ao mesmo tempo e o ranking sobe ao vivo.
-- Pontos, sequência de acertos, estrelas, recorde salvo no navegador, sons e animações.
+- Pontos, sequência de acertos, estrelas, recorde salvo no navegador, sons e animações. No Desafio e na sala a nota é em **pontos por minuto**: pontos das jogadas ÷ tempo, então rapidez e acerto contam juntos.
 
 ## Como rodar
 
