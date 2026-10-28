@@ -31,10 +31,10 @@ Garimpo.Tutorial = (function(){
       } },
 
     { title:'Decida rápido',
-      text:'Se a gema da lupa for menor, escolha Nova menor. Se não, Manter. Acertos seguidos valem mais pontos. Errar tira pontos e corta a sequência. No Desafio, quem pontua mais rápido ganha.',
+      text:'Se a gema da lupa for menor, escolha Atualizar o menor. Se não, Manter o menor atual. Acertos seguidos valem mais pontos. Errar tira pontos e corta a sequência. No Desafio, quem pontua mais rápido ganha.',
       scene:function(){
-        return '<div class="say"><span>8 é maior que 5: manter</span><span>2 é menor que 5: nova menor!</span></div>' +
-          '<div class="mock"><span class="btn b-gold">Manter</span><span class="btn b-sky">Nova menor!</span></div>';
+        return '<div class="say"><span>8 é maior que 5: manter</span><span>2 é menor que 5: atualizar!</span></div>' +
+          '<div class="mock"><span class="btn b-gold">Manter o menor</span><span class="btn b-sky">Atualizar o menor</span></div>';
       } },
 
     { title:'Leve para a vitrine',

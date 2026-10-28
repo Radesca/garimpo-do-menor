@@ -73,7 +73,7 @@
         <div class="progbar"><i id="progFill"></i></div>
         <div class="progtxt" id="progTxt"></div>
       </div>
-      <div class="score"><span id="score">0</span><small>pontos</small></div>
+      <div class="score"><span id="score">0</span><small>Pontuação</small></div>
       <button class="icon" id="snd" aria-label="Som" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path id="sndWave" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
     </div>
 
@@ -97,7 +97,9 @@
       </svg>
       <div class="bubble">
         <div class="round" id="round"></div>
+        <h2 class="qtitle" id="qtitle"></h2>
         <p class="prompt" id="prompt"></p>
+        <p class="tip"><b>Lembre-se:</b> <span id="tipText"></span></p>
         <p class="fb" id="fb" aria-live="polite"></p>
       </div>
     </div>
@@ -113,24 +115,24 @@
           <div class="mkr" data-k="lupa"><span class="pill pl"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg><span class="t">Lupa</span></span></div>
         </div>
         <p class="legend">
-          <span><b style="background:#fff"></b>Vaga: próxima posição da vitrine</span>
-          <span><b style="background:var(--gold)"></b>Menor até agora</span>
-          <span><b style="background:var(--sky)"></b>Lupa: gema em comparação</span>
+          <span><b style="background:#fff"></b>Vaga: posição onde a menor ficará no fim da busca</span>
+          <span><b style="background:var(--gold)"></b>Menor encontrado: menor valor identificado até agora</span>
+          <span><b style="background:var(--sky)"></b>Lupa: elemento em comparação, analisado para ver se é o novo menor</span>
         </p>
       </div>
     </div>
 
     <div class="actions" id="action">
-      <button class="btn b-gold" data-act="keep"><span>Manter a menor</span><small>a bandeira fica onde está</small></button>
-      <button class="btn b-sky" data-act="move"><span>Nova menor!</span><small>a da lupa é menor</small></button>
+      <button class="btn b-gold" data-act="keep"><span>Manter o menor atual</span><small>O número da lupa não é menor. A bandeira continua onde está.</small></button>
+      <button class="btn b-sky" data-act="move"><span>Atualizar o menor</span><small>O número da lupa é menor. A bandeira passa para ele.</small></button>
       <button class="btn b-mint swap" data-act="swap"></button>
     </div>
-    <p class="kbd" id="kbd"><kbd>←</kbd> manter &nbsp; <kbd>→</kbd> nova menor ou trocar</p>
+    <p class="kbd" id="kbd"><kbd>←</kbd> manter o menor &nbsp; <kbd>→</kbd> atualizar o menor ou levar para a vitrine</p>
 
     <section class="result" id="result" hidden></section>
 
     <details class="algo">
-      <summary>Ver o algoritmo por trás</summary>
+      <summary>Ver o algoritmo por trás <span class="sub">· entenda a lógica do Selection Sort passo a passo</span></summary>
       <div class="code" id="code">
         <div class="ln" data-l="1">para i de 0 até n−2:</div>
         <div class="ln" data-l="2">    menor ← i</div>

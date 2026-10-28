@@ -140,15 +140,21 @@ Garimpo.Game = (function(){
     var vm = val(S.min), vj = scan ? val(S.j) : null;
     var hadFocus = $('#action').contains(document.activeElement);
 
-    $('#round').textContent = 'Rodada ' + (i + 1) + ' de ' + (S.n - 1);
+    $('#round').textContent = 'Rodada ' + (i + 1) + ' · ' + (scan ? 'Comparação ' + (S.j - i) + ' · Busca do menor' : 'Hora de trocar');
     if(scan){
+      $('#qtitle').textContent = 'Qual número é menor?';
       $('#prompt').innerHTML = treino
-        ? 'Compare <b class="vj">' + vj + '</b> (lupa) com <b class="vm">' + vm + '</b> (menor). Quem é menor?'
-        : 'Compare a gema da lupa com a menor até agora. Quem é menor?';
+        ? 'Compare o número <b class="vj">' + vj + '</b> (indicado pela lupa) com o menor encontrado até agora: <b class="vm">' + vm + '</b> (indicado pela bandeira).'
+        : 'Compare o número indicado pela lupa com o menor encontrado até agora (indicado pela bandeira).';
+      $('#tipText').textContent = 'Se o número da lupa for menor, ele passa a ser o novo menor. Caso contrário, mantenha o menor atual.';
     } else if(S.min === i){
-      $('#prompt').innerHTML = 'Busca completa! A <b class="vm">' + vm + '</b> já está na vaga certa.';
+      $('#qtitle').textContent = 'A menor já está no lugar!';
+      $('#prompt').innerHTML = 'A busca terminou e o <b class="vm">' + vm + '</b> já está na vaga certa (posição ' + (i + 1) + ').';
+      $('#tipText').textContent = 'Não precisa trocar nada: fixe a gema na vitrine e siga para a próxima rodada.';
     } else {
-      $('#prompt').innerHTML = 'Busca completa! A menor é <b class="vm">' + vm + '</b>. Leve-a para a vaga ' + (i + 1) + '.';
+      $('#qtitle').textContent = 'Leve a menor para a vitrine!';
+      $('#prompt').innerHTML = 'A busca terminou. O menor número é <b class="vm">' + vm + '</b>, e ele vai para a vaga ' + (i + 1) + '.';
+      $('#tipText').textContent = 'A menor troca de lugar com a gema da vaga. Ela fica ordenada na vitrine e a vaga avança.';
     }
 
     var hint = treino ? 'Só mudamos a bandeira se a da lupa for menor de verdade.'
@@ -162,8 +168,8 @@ Garimpo.Game = (function(){
     swap.hidden = scan;
     if(!scan){
       swap.innerHTML = S.min === i
-        ? '<span>Fixar na vitrine</span><small>nenhuma troca nesta rodada</small>'
-        : '<span>Levar para a vitrine!</span><small>trocar ' + val(i) + ' ↔ ' + vm + '</small>';
+        ? '<span>Fixar na vitrine</span><small>A menor já está no lugar certo. Nenhuma troca nesta rodada.</small>'
+        : '<span>Levar para a vitrine!</span><small>Trocar o ' + val(i) + ' da vaga com o ' + vm + ' (a menor).</small>';
     }
     if(hadFocus) (scan ? keep : swap).focus({ preventScroll: true });   // não perde o foco do teclado
   }
@@ -181,8 +187,7 @@ Garimpo.Game = (function(){
       'n = <b>' + S.n + '</b> · i = <b>' + S.i + '</b> · j = <b>' + (scan ? S.j : '—') + '</b> · menor = <b>' + S.min +
       '</b> (valor <b>' + val(S.min) + '</b>) · comparações = <b>' + S.comps + '</b>/' + S.totalComps + ' · trocas = <b>' + S.swaps + '</b>';
     $('#race').hidden = cfg.mode === 'treino' || S.room;
-    $('#progTxt').textContent = 'Vitrine ' + sorted + ' de ' + S.n +
-      (cfg.mode === 'desafio' ? (S.t0 || done ? ' · ' + U.fmt(S.elapsed) : ' · pronto?') : '');
+    $('#progTxt').textContent = progressText();
     paintRace();
   }
 
@@ -201,10 +206,18 @@ Garimpo.Game = (function(){
       : mine > theirs ? 'Você está na frente!' : mine < theirs ? 'O Robô está na frente!' : 'Empate!';
   }
 
+  // Texto do topo: posições ordenadas, passagem (rodada) e, no Desafio, o tempo.
+  function progressText(){
+    var done = S.phase === 'done';
+    var text = 'Posições ordenadas: ' + (done ? S.n : S.i) + ' de ' + S.n + ' · Passagem: ' + Math.min(S.i + 1, S.n - 1) + ' de ' + (S.n - 1);
+    if(cfg.mode === 'desafio') text += ' · Tempo: ' + ((S.t0 || done) ? U.fmt(S.elapsed) : 'pronto?');
+    return text;
+  }
+
   function tick(){
     if(!S || !S.t0 || S.phase === 'done') return;
     S.elapsed = performance.now() - S.t0;
-    $('#progTxt').textContent = 'Vitrine ' + S.i + ' de ' + S.n + ' · ' + U.fmt(S.elapsed);
+    $('#progTxt').textContent = progressText();
     paintRace();
     if(!S.room && !S.botNotified && S.elapsed >= S.bot.total){
       S.botNotified = true;
@@ -292,7 +305,7 @@ Garimpo.Game = (function(){
 
   /* ---------- as jogadas ---------- */
 
-  // "Manter a menor" (keep) ou "Nova menor!" (move). É a comparação v[j] < v[menor] do algoritmo.
+  // "Manter o menor atual" (keep) ou "Atualizar o menor" (move). É a comparação v[j] < v[menor] do algoritmo.
   function decide(choice){
     if(S.phase !== 'scan' || S.busy || isLocked()) return;
     startClock();
@@ -471,7 +484,7 @@ Garimpo.Game = (function(){
       $('#sndWave').style.display = muted ? 'none' : '';
       if(!muted) Sound.play('tap');
     });
-    // ← mantém a menor, → escolhe "nova menor" (ou leva para a vitrine).
+    // ← mantém o menor atual, → atualiza o menor (ou leva para a vitrine).
     document.addEventListener('keydown', function(e){
       if(!S || $('#game').hidden || e.metaKey || e.ctrlKey || e.altKey) return;
       if(e.key === 'ArrowLeft' && S.phase === 'scan'){ e.preventDefault(); decide('keep'); }
