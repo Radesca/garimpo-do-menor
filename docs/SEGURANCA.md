@@ -8,6 +8,7 @@ O jogo roda no navegador de cada pessoa, e tudo que roda no navegador pode ser m
 |---|---|
 | Editar a própria nota ou a de outra pessoa | Ninguém grava nota. O aluno grava só as jogadas (o "log"), e todos os celulares recalculam a nota a partir delas (`js/engine.js` e `js/ranking.js`). |
 | Declarar um tempo menor que o real | O tempo vem do relógio do servidor (`finishedAt` só aceita a hora do servidor) e a rodada só aceita jogadas depois da largada. |
+| Refazer a jogada depois de terminar | Depois do `finishedAt` ninguém consegue mudar nem apagar o próprio log, o horário ou a rodada (testado: o banco recusa). |
 | Mudar a rodada, a semente ou o estado da sala | Só o professor (quem criou a sala) escreve nessas partes. Cada aluno escreve só na própria pasta. |
 | Apagar ou editar o jogador de outra pessoa | As regras do banco só deixam cada pessoa escrever em `players/<seu uid>`. |
 | Entrar como outra pessoa | Cada navegador entra com login anônimo e ganha um uid. Ninguém escreve no uid dos outros. |
