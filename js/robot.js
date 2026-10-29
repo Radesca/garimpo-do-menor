@@ -14,7 +14,7 @@ Garimpo.Robot = (function(){
   //   calmo : ~1 min 40 s, dá tempo de pensar e errar um pouco
   //   normal: ~1 min 15 s, quem joga de forma constante consegue ganhar
   //   turbo : ~55 s, só com jogadas rápidas (dica: use as setas do teclado)
-  var LEVELS = { calmo: 3400, normal: 2500, turbo: 1800 };
+  var LEVELS = Object.freeze({ calmo: 3400, normal: 2500, turbo: 1800 });
 
   // Na sala todos jogam a mesma partida, então o "tempo de referência" é fixo.
   var ROOM_MS = 1100;

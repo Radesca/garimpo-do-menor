@@ -1,0 +1,40 @@
+{
+  "rules": {
+    "rooms": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (data.exists() ? data.child('adminUid').val() === auth.uid : newData.child('adminUid').val() === auth.uid)",
+        ".validate": "$code.matches(/^[A-HJ-NP-Z]{4}$/) && newData.hasChildren(['adminUid', 'status', 'current'])",
+        "adminUid": { ".validate": "newData.isString()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "status": { ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'over'" },
+        "current": { ".validate": "newData.isString() && newData.val().matches(/^r[0-9]{1,2}$/)" },
+        "rounds": {
+          "$round": {
+            ".validate": "$round.matches(/^r[0-9]{1,2}$/) && newData.hasChildren(['n', 'seed', 'startAt'])",
+            "n": { ".validate": "newData.val() === 5 || newData.val() === 7 || newData.val() === 9" },
+            "seed": { ".validate": "newData.isNumber()" },
+            "startAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('rooms/' + $code + '/status').val() !== 'over'",
+            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 14" },
+            "rounds": {
+              "$round": {
+                ".validate": "$round === root.child('rooms/' + $code + '/current').val()",
+                "log": { ".validate": "newData.isString() && newData.val().length <= 400 && newData.val().matches(/^[kms]*$/) && now >= root.child('rooms/' + $code + '/rounds/' + $round + '/startAt').val() && !data.parent().child('finishedAt').exists()" },
+                "finishedAt": { ".validate": "newData.val() === now && !data.exists()" },
+                "$other": { ".validate": false }
+              }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

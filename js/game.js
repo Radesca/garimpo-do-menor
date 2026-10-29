@@ -1,5 +1,5 @@
 /*
-  Núcleo do jogo: estado da partida, regras do selection sort e desenho da tela de jogo.
+  Tela de jogo: desenha a partida e liga os botões ao motor de regras (engine.js).
 
   O jogador faz o papel do algoritmo:
     i      "vaga"   primeira posição ainda não ordenada          (marcador branco)
@@ -7,19 +7,20 @@
     j      "lupa"   posição da gema sendo comparada com a menor  (lupa azul)
   Em cada rodada a lupa percorre as gemas depois de i (fase 'scan'). No fim, a menor
   troca de lugar com a vaga (fase 'swap') e a vaga avança. Quando sobra uma gema, acabou ('done').
+
+  As regras e os pontos ficam no engine.js. Aqui ficam só a tela, os sons, os efeitos e o relógio.
 */
 Garimpo.Game = (function(){
-  var U = Garimpo.Util, Sound = Garimpo.Sound, Fx = Garimpo.Fx, Gems = Garimpo.Gems,
+  var U = Garimpo.Util, Sound = Garimpo.Sound, Fx = Garimpo.Fx, Gems = Garimpo.Gems, Engine = Garimpo.Engine,
       Robot = Garimpo.Robot, Screens = Garimpo.Screens, RULES = Garimpo.RULES, cfg = Garimpo.cfg;
   var $ = U.$;
 
   /*
-    Estado da partida (S):
-      vals    número de cada gema, pelo id. O id é a posição inicial e nunca muda.
-      order   order[posição] = id da gema que está ali. Trocar duas gemas é trocar dois itens daqui.
-      i, min, j, phase   veja o comentário do topo
-      room    true quando é uma rodada da sala (rooms.js)
-      bot     roteiro do robô (js/robot.js)
+    S é o estado do motor (engine.js) mais o que é só da tela:
+      room     true quando é uma rodada da sala (rooms.js)
+      score    pontos mostrados na tela (a nota final, no fim do Desafio)
+      t0, elapsed   relógio do Desafio e da sala
+      bot      roteiro do robô (js/robot.js)
   */
   var S = null;
   var cells = [];                // elemento da tela de cada gema, pelo id
@@ -29,40 +30,17 @@ Garimpo.Game = (function(){
 
   /* ---------- começar uma partida ---------- */
 
-  // Sorteia os valores. Com `twins`, as duas primeiras gemas são iguais e a menor fica no fim:
-  // assim o selection sort sempre inverte o par e dá para mostrar que ele não é estável.
-  function makeValues(n, twins){
-    var rand = U.rand;
-    if(twins){
-      var unique = rand.sample(n - 1, 1, 99).sort(function(a, b){ return a - b; });
-      var smallest = unique[0], rest = unique.slice(1), twin = rest[rand.int(0, rest.length - 1)];
-      var middle = rand.shuffle(rest.filter(function(x){ return x !== twin; }));
-      return [twin, twin].concat(middle, [smallest]);
-    }
-    var vals;
-    do { vals = rand.sample(n, 1, 99); } while(inversions(vals) < n);   // evita sequências quase ordenadas
-    return vals;
-  }
-
-  function inversions(list){
-    var count = 0;
-    for(var a = 0; a < list.length; a++)
-      for(var b = a + 1; b < list.length; b++) if(list[a] > list[b]) count++;
-    return count;
-  }
-
-  function newGame(room){
+  // `seed` só existe nas rodadas da sala: com ela todos os celulares sorteiam as mesmas gemas.
+  function newGame(room, seed){
     clearInterval(clock);
-    var n = cfg.n, order = [];
-    for(var k = 0; k < n; k++) order.push(k);
-    var vals = makeValues(n, cfg.twins);
-    U.rand.useRandom();   // na sala o sorteio usava uma semente; volta ao normal
-    var bot = room ? Robot.uniformPlan(n) : Robot.plan(n, Robot.LEVELS[cfg.bot]);
+    var n = cfg.n;
+    var vals = (seed != null) ? Engine.valuesFor(seed, n) : Engine.makeValues(n, cfg.twins);
 
-    S = { n:n, room:!!room, vals:vals, order:order, i:0, min:0, j:1, phase:'scan',
-          comps:0, swaps:0, skipped:0, rounds:0, errors:0, streak:0, bestStreak:0, score:0,
-          t0:0, elapsed:0, busy:false, lockedUntil:0, fb:null, won:false, botNotified:false,
-          totalComps:n * (n - 1) / 2, bot:bot };
+    S = Engine.createState(vals);
+    S.room = !!room;
+    S.score = 0; S.t0 = 0; S.elapsed = 0; S.busy = false; S.lockedUntil = 0;
+    S.fb = null; S.won = false; S.botNotified = false;
+    S.bot = room ? Robot.uniformPlan(n) : Robot.plan(n, Robot.LEVELS[cfg.bot]);
 
     shownScore = 0; $('#score').textContent = '0';
     U.$$('#action .btn').forEach(function(b){ b.disabled = false; });
@@ -83,7 +61,7 @@ Garimpo.Game = (function(){
       el.className = 'slot';
       el.style.setProperty('--k', id);
       var twin = (cfg.twins && id < 2) ? String(id + 1) : '';
-      el.innerHTML = Gems.inner(value, Gems.colorFor(id, cfg.twins), twin);
+      el.innerHTML = Gems.inner(value, Gems.colorFor(id, cfg.twins), twin, false);   // número só quando abrir
       box.appendChild(el); cells.push(el);
     });
     for(var k = 0; k < S.n; k++) planks += '<i class="plank" style="grid-column:' + (k + 1) + '"></i>';
@@ -92,8 +70,17 @@ Garimpo.Game = (function(){
 
   /* ---------- desenhar a tela a partir do estado ---------- */
 
-  function val(pos){ return S.vals[S.order[pos]]; }
+  function val(pos){ return Engine.val(S, pos); }
   function slotAt(pos){ return cells[S.order[pos]]; }
+
+  // O número de uma gema só existe na página enquanto ela está aberta. Ao fechar, some depois da
+  // animação. Assim o inspetor do navegador não mostra os valores escondidos.
+  function showNumber(el, id, open){
+    var num = el.querySelector('.jewel .num');
+    clearTimeout(el._hide);
+    if(open) num.textContent = S.vals[id];
+    else if(num.textContent) el._hide = setTimeout(function(){ num.textContent = ''; }, 700);
+  }
 
   // Única função que mexe nas gemas e marcadores: a tela sempre reflete o estado S.
   function paint(){
@@ -111,6 +98,7 @@ Garimpo.Game = (function(){
       el.classList.toggle('ismin', !done && pos === min);
       el.classList.toggle('isscan', !done && pos === j);
       el.setAttribute('aria-label', open ? 'Gema ' + S.vals[id] : 'Pedra fechada');
+      showNumber(el, id, open);
     });
 
     U.$$('.plank').forEach(function(p, k){ p.classList.toggle('gold', k < sorted); });
@@ -176,7 +164,7 @@ Garimpo.Game = (function(){
 
   // Pseudocódigo destacado, variáveis ao vivo e barra de progresso.
   function paintSide(){
-    var scan = S.phase === 'scan', done = S.phase === 'done', sorted = done ? S.n : S.i;
+    var scan = S.phase === 'scan', done = S.phase === 'done';
     U.$$('.ln').forEach(function(line){
       var k = +line.dataset.l, on = false, context = false;
       if(scan){ on = (k === 3 || k === 4); context = k < 3; }
@@ -266,27 +254,12 @@ Garimpo.Game = (function(){
     setTimeout(function(){ el.classList.remove(cls); }, ms);
   }
 
-  function countHit(){
-    S.streak++;
-    S.bestStreak = Math.max(S.bestStreak, S.streak);
-  }
-
-  /* ---------- nota por velocidade ---------- */
-
   // Há relógio correndo (Desafio e sala)? No Treino a nota é só a soma das jogadas.
   function timed(){ return cfg.mode === 'desafio' && S.t0 > 0; }
 
-  // Pontos das jogadas por minuto de jogo. Não precisa de tempo de referência.
-  function speedScore(points){
-    var seconds = Math.max(S.elapsed, RULES.MIN_TIME_MS) / 1000;
-    return Math.round(points * 60 / seconds);
-  }
-
-  // Durante a rodada da sala o ranking mostra uma estimativa da nota final.
+  // A sala grava as jogadas (o log) a cada passo. A nota é calculada por todos a partir delas.
   function notifyRoom(){
-    if(!S.room || !Garimpo.Rooms) return;
-    S.rankScore = timed() ? speedScore(S.score) : S.score;
-    Garimpo.Rooms.progress(S);
+    if(S.room && Garimpo.Rooms) Garimpo.Rooms.progress(S);
   }
 
   // Depois de um erro no Desafio os botões travam um instante: errar custa tempo, então chutar não compensa.
@@ -309,13 +282,12 @@ Garimpo.Game = (function(){
   function decide(choice){
     if(S.phase !== 'scan' || S.busy || isLocked()) return;
     startClock();
-    var vj = val(S.j), vm = val(S.min), smaller = vj < vm;
-    var correct = (choice === 'move') === smaller;
     var gem = slotAt(S.j);
+    var event = Engine.apply(S, choice === 'move' ? 'm' : 'k');
+    var vj = event.vj, vm = event.vm;
 
-    if(!correct){
-      S.errors++; S.streak = Math.floor(S.streak * RULES.STREAK_KEEP); showStreak();
-      setScore(Math.max(0, S.score - RULES.PENALTY));
+    if(event.kind === 'miss'){
+      setScore(S.points); showStreak();
       Fx.floatText(gem, '-' + RULES.PENALTY, '#FF5C6C'); Fx.burst(gem, '#FF5C6C', 8);
       flash(gem, 'wrong', 500); flash($('#board'), 'shake', 400);
       mood('sad'); Sound.play('bad');
@@ -327,17 +299,12 @@ Garimpo.Game = (function(){
       return;
     }
 
-    S.comps++; countHit();
-    var points = RULES.CORRECT + RULES.STREAK_STEP * Math.min(S.streak - 1, RULES.STREAK_CAP);
-    setScore(S.score + points);
-    Fx.floatText(gem, '+' + points, '#35E0A1'); Fx.burst(gem, ['#35E0A1', '#FFC93C'], 7);
+    setScore(S.points);
+    Fx.floatText(gem, '+' + event.points, '#35E0A1'); Fx.burst(gem, ['#35E0A1', '#FFC93C'], 7);
     flash(gem, 'hop', 450); mood('cheer'); Sound.play('ok', S.streak); showStreak();
-
-    if(smaller){ say(vj + ' < ' + vm + ': a bandeira passa para a ' + vj + '.', 'ok'); S.min = S.j; }
-    else if(vj === vm){ say(vj + ' = ' + vm + ': empate. A bandeira fica (só troca se for menor).', 'ok'); }
-    else { say(vj + ' > ' + vm + ': a bandeira continua na ' + vm + '.', 'ok'); }
-
-    if(S.j < S.n - 1) S.j++; else { S.phase = 'swap'; S.j = null; }
+    if(event.smaller) say(vj + ' < ' + vm + ': a bandeira passa para a ' + vj + '.', 'ok');
+    else if(vj === vm) say(vj + ' = ' + vm + ': empate. A bandeira fica (só troca se for menor).', 'ok');
+    else say(vj + ' > ' + vm + ': a bandeira continua na ' + vm + '.', 'ok');
     paint();
   }
 
@@ -348,13 +315,13 @@ Garimpo.Game = (function(){
     var a = S.i, b = S.min;
 
     if(a === b){
-      S.skipped++; countHit();
-      setScore(S.score + RULES.SKIP);
-      say('Já estava no lugar, sem troca! Bônus econômico.', 'ok');
       var stay = slotAt(a);
-      Fx.burst(stay, ['#FFC93C', '#fff'], 12); Fx.floatText(stay, '+' + RULES.SKIP, '#FFC93C');
+      var skip = Engine.apply(S, 's');
+      setScore(S.points);
+      say('Já estava no lugar, sem troca! Bônus econômico.', 'ok');
+      Fx.burst(stay, ['#FFC93C', '#fff'], 12); Fx.floatText(stay, '+' + skip.points, '#FFC93C');
       Sound.play('swap'); mood('cheer'); showStreak();
-      endRound();
+      afterRound();
       return;
     }
 
@@ -376,26 +343,20 @@ Garimpo.Game = (function(){
     ], { duration:duration, easing:'ease-in-out', fill:'forwards' });
 
     moveB.finished.then(function(){
-      var tmp = S.order[a]; S.order[a] = S.order[b]; S.order[b] = tmp;   // a troca de verdade
-      S.swaps++; countHit();
-      setScore(S.score + RULES.SWAP);
+      var swap = Engine.apply(S, 's');   // a troca de verdade, só depois da animação
+      setScore(S.points);
       say('Troca feita! A ' + val(a) + ' está na vitrine.', 'ok');
-      endRound(function(){ moveA.cancel(); moveB.cancel(); gemA.style.zIndex = gemB.style.zIndex = ''; });
+      afterRound(function(){ moveA.cancel(); moveB.cancel(); gemA.style.zIndex = gemB.style.zIndex = ''; });
       var landed = slotAt(a);
-      Fx.burst(landed, ['#FFC93C', '#FFE08A', '#fff'], 14); Fx.floatText(landed, '+' + RULES.SWAP, '#FFC93C');
+      Fx.burst(landed, ['#FFC93C', '#FFE08A', '#fff'], 14); Fx.floatText(landed, '+' + swap.points, '#FFC93C');
       flash(landed, 'hop', 450); mood('cheer'); showStreak();
     });
   }
 
-  // Avança a vaga e começa a próxima rodada (ou termina a partida).
-  function endRound(beforePaint){
-    S.rounds++; S.i++; S.busy = false;
-    if(S.i >= S.n - 1){
-      S.phase = 'done'; S.j = null;
-      if(S.t0){ S.elapsed = performance.now() - S.t0; S.won = S.elapsed < S.bot.total; }
-    } else {
-      S.min = S.i; S.j = S.i + 1; S.phase = 'scan';
-    }
+  // Redesenha depois de uma rodada (ou termina a partida).
+  function afterRound(beforePaint){
+    S.busy = false;
+    if(S.phase === 'done' && S.t0){ S.elapsed = performance.now() - S.t0; S.won = S.elapsed < S.bot.total; }
     if(beforePaint) beforePaint();   // solta as animações logo antes de redesenhar, sem piscar
     paint();
     if(S.phase === 'done') finish();
@@ -417,8 +378,7 @@ Garimpo.Game = (function(){
 
   function finish(){
     // No Desafio a nota final é a velocidade de pontuação (pontos das jogadas por minuto).
-    S.points = S.score;
-    if(timed()) setScore(speedScore(S.points));
+    if(timed()) setScore(Engine.rate(S.points, S.elapsed, S.log.length));
     var isBest = !S.room && S.score > U.best.get(cfg);
     if(isBest) U.best.save(cfg, S.score);
 
@@ -439,7 +399,9 @@ Garimpo.Game = (function(){
     if(isBest) h += '<span class="newbest">Novo recorde!</span>';
 
     h += '<ul class="facts">';
-    if(timed()){
+    if(S.room){
+      h += '<li><b>' + S.points + ' pontos das jogadas.</b> A nota final (pontos por minuto) usa o relógio do servidor e aparece no ranking abaixo.</li>';
+    } else if(timed()){
       h += '<li><b>Nota por velocidade:</b> ' + S.points + ' pontos em ' + U.fmt(S.elapsed) + ' = <b>' + S.score + ' pontos por minuto</b>.</li>';
     }
     if(cfg.mode === 'desafio' && !S.room){
@@ -496,7 +458,7 @@ Garimpo.Game = (function(){
 
   bindControls();
 
-  return {
+  return Object.freeze({
     start: function(){ Screens.show('game'); newGame(); },
     stopClock: function(){ clearInterval(clock); },
 
@@ -504,8 +466,7 @@ Garimpo.Game = (function(){
     startRoom: function(o){
       if(!cfgBackup) cfgBackup = { mode:cfg.mode, n:cfg.n, twins:cfg.twins };
       cfg.mode = 'desafio'; cfg.n = o.n; cfg.twins = false;
-      U.rand.useSeed(o.seed);
-      Screens.show('game'); newGame(true);
+      Screens.show('game'); newGame(true, o.seed);
     },
     // Liga o relógio (msAgo > 0 quando o jogador entrou depois da largada).
     armClock: function(msAgo){ if(S && !S.t0) S.t0 = performance.now() - (msAgo || 0); },
@@ -513,8 +474,8 @@ Garimpo.Game = (function(){
     leave: function(){
       clearInterval(clock);
       if(cfgBackup){ cfg.mode = cfgBackup.mode; cfg.n = cfgBackup.n; cfg.twins = cfgBackup.twins; cfgBackup = null; }
-      U.rand.useRandom(); S = null;
+      S = null;
       Garimpo.Menu.sync();
     }
-  };
+  });
 })();

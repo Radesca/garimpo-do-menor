@@ -12,26 +12,18 @@ Leva uns 5 a 10 minutos e é grátis (plano Spark). Você só faz isso uma vez.
 2. Escolha o local (qualquer um serve).
 3. Escolha **Iniciar no modo bloqueado** e clique em Ativar.
 
-## 3. Colar as regras
+## 3. Ativar o login anônimo
+1. No menu da esquerda: **Criação** → **Authentication** → **Vamos começar**.
+2. Em **Método de login**, escolha **Anônimo**, ative e salve.
+
+Cada navegador entra sozinho, sem cadastro, e ganha um identificador. É ele que as regras do banco usam para saber quem é o professor e de quem é cada jogada.
+
+## 3b. Colar as regras
 1. No Realtime Database, abra a aba **Regras**.
-2. Apague tudo e cole isto:
-
-```json
-{
-  "rules": {
-    "rooms": {
-      "$code": {
-        ".read": true,
-        ".write": true
-      }
-    }
-  }
-}
-```
-
+2. Apague tudo e cole o conteúdo do arquivo `database.rules.json` deste projeto.
 3. Clique em **Publicar**.
 
-Essas regras deixam qualquer pessoa com o código da sala ler e escrever nela. Para uma aula entre colegas isso é aceitável. Ninguém consegue listar as salas existentes, só entrar em uma cujo código saiba. Os dados da sala são apagados quando o professor fecha a sala.
+Essas regras só deixam o professor (quem criou a sala) mudar o estado dela, cada aluno escrever só na própria pasta, e só aceitam jogadas, nunca notas. Veja [SEGURANCA.md](SEGURANCA.md) para os detalhes e os limites.
 
 ## 4. Registrar o app web e copiar a configuração
 1. Engrenagem (⚙) → **Configurações do projeto**.

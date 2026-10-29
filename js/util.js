@@ -2,7 +2,7 @@
   Utilitários: atalhos do DOM, armazenamento local, sorteio (com semente) e formatação.
 */
 Garimpo.Util = (function(){
-  var rng = Math.random;   // na sala vira um sorteio com semente, igual para todos os jogadores
+  var rng = Math.random;   // dentro de withSeed vira um sorteio com semente, igual para todos os jogadores
 
   // mulberry32: gerador pequeno que, dada a mesma semente, produz sempre a mesma sequência.
   function seeded(seed){
@@ -16,8 +16,12 @@ Garimpo.Util = (function(){
   }
 
   var rand = {
-    useSeed: function(seed){ rng = seeded(seed); },
-    useRandom: function(){ rng = Math.random; },
+    // Roda `fn` com um sorteio de semente fixa (mesma semente, mesmos números) e depois volta ao normal.
+    withSeed: function(seed, fn){
+      var previous = rng;
+      rng = seeded(seed);
+      try{ return fn(); } finally { rng = previous; }
+    },
     int: function(min, max){ return min + Math.floor(rng() * (max - min + 1)); },
     shuffle: function(list){
       for(var k = list.length - 1; k > 0; k--){
@@ -50,7 +54,7 @@ Garimpo.Util = (function(){
 
   var ESCAPES = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
 
-  return {
+  return Object.freeze({
     $: function(selector){ return document.querySelector(selector); },
     $$: function(selector){ return [].slice.call(document.querySelectorAll(selector)); },
     reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -60,5 +64,5 @@ Garimpo.Util = (function(){
     fmt: function(ms){ return (ms / 1000).toFixed(1) + 's'; },
     // Para texto digitado por outras pessoas (apelidos) que entra em innerHTML.
     escape: function(text){ return String(text).replace(/[&<>"']/g, function(c){ return ESCAPES[c]; }); }
-  };
+  });
 })();

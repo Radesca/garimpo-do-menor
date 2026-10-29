@@ -54,19 +54,23 @@ Não há bundler nem módulos: cada arquivo de `js/` cria um módulo dentro do o
 | `gems.js` | `Garimpo.Gems` | SVG das gemas e pedras, paleta de cores |
 | `effects.js` | `Garimpo.Fx` | Faíscas, pontos subindo, confete |
 | `robot.js` | `Garimpo.Robot` | O roteiro do Robô e os níveis |
+| `engine.js` | `Garimpo.Engine` | As regras do jogo e os pontos, sem tela. Também refaz uma partida a partir do log |
+| `ranking.js` | `Garimpo.Ranking` | Calcula o ranking da sala a partir dos logs e do relógio do servidor |
 | `screens.js` | `Garimpo.Screens` | Mostrar uma tela e esconder as outras |
-| `game.js` | `Garimpo.Game` | Regras do jogo e desenho da partida |
+| `game.js` | `Garimpo.Game` | Desenho da partida e ligação dos botões ao motor |
 | `tutorial.js` | `Garimpo.Tutorial` | O "Como jogar" |
 | `menu.js` | `Garimpo.Menu` | Tela inicial |
 | `rooms.js` | `Garimpo.Rooms` | Sala da turma (Firebase) |
 
-O `game.js` não sabe nada sobre a sala. Em rodadas da sala ele só chama `Garimpo.Rooms.progress(S)` e `Garimpo.Rooms.finish(S)`, e o `rooms.js` decide o que gravar.
+O `game.js` não sabe nada sobre a sala. Em rodadas da sala ele só chama `Garimpo.Rooms.progress(S)` e `Garimpo.Rooms.finish(S)`, e o `rooms.js` grava as jogadas (o log).
+
+As regras do jogo ficam no `engine.js`, sem nada de tela. Uma partida é uma lista de valores mais um log de jogadas (`k` manter, `m` atualizar o menor, `s` levar para a vitrine), e `Engine.replay(valores, log)` refaz a partida inteira. É isso que permite recalcular a nota de qualquer jogador sem confiar no que ele diz.
 
 ---
 
 ## 3. `game.js` em detalhe
 
-### O estado: o objeto `S`
+### O estado: o objeto `S` (criado pelo `engine.js`)
 ```
 S.vals    número de cada gema, pelo id (nunca muda)
 S.order   order[posição] = id da gema que está ali (muda nas trocas)
@@ -104,21 +108,24 @@ Para mudar a dificuldade, edite `LEVELS` no topo do `robot.js`.
 
 ## 5. A Sala da turma (`rooms.js`)
 
-O site continua sendo arquivos estáticos. O que une os celulares é o Firebase Realtime Database, que avisa todo mundo quando algo muda. Cada sala é uma pasta no banco:
+O site continua sendo arquivos estáticos. O que une os celulares é o Firebase Realtime Database, que avisa todo mundo quando algo muda. Cada pessoa entra com login anônimo (`firebase.auth().signInAnonymously()`) e ganha um uid. Cada sala é uma pasta no banco:
 
 ```
 rooms/ABCD
-  status    'lobby' (esperando) | 'playing' (rodando) | 'over' (encerrada)
-  round     número da rodada
-  n, seed   quantidade de gemas e a "semente" do sorteio
-  startAt   horário em que a rodada começa (hora do servidor)
-  players/  um item por jogador: name, base, score, progress, errors, done, ms
+  adminUid   uid do professor (quem criou a sala)
+  status     'lobby' (esperando) | 'playing' (rodando) | 'over' (encerrada)
+  current    rodada atual: 'r0' (não começou), 'r1', 'r2'...
+  rounds/r1  n, seed (sorteio) e startAt (hora do servidor da largada)
+  players/<uid>/name
+  players/<uid>/rounds/r1/log          as jogadas, por exemplo "mmkkmsmkk..."
+  players/<uid>/rounds/r1/finishedAt   hora do servidor em que terminou
 ```
 
-- **Mesma sequência para todos:** o `seed` vai para `Util.rand.useSeed`. Com a mesma semente, todos os celulares sorteiam os mesmos números.
+- **Mesma sequência para todos:** o `seed` vai para `Util.rand.withSeed`. Com a mesma semente, todos os celulares sorteiam os mesmos números.
 - **Largada sincronizada:** o professor grava `startAt = agora + 5,5 s` usando a hora do servidor (`.info/serverTimeOffset`). Cada celular mostra a contagem até esse horário.
-- **Pontuação:** cada jogador grava o próprio `score` a cada jogada. O ranking é `base + score`, e a `base` é a soma das rodadas anteriores.
-- **Segurança básica:** os apelidos são escritos com `textContent` ou `Util.escape`, então ninguém injeta HTML pelo nome.
+- **Ninguém grava nota.** O aluno grava só o log. `Ranking.compute` refaz cada partida com `Engine.replay`, pega o tempo do servidor (`finishedAt − startAt`) e calcula a nota. Professor e alunos chegam ao mesmo ranking.
+- **Segurança:** as regras (`database.rules.json`) só deixam o professor mudar o estado da sala e cada aluno escrever na própria pasta, e só aceitam logs de letras `k`, `m` e `s`. Veja [SEGURANCA.md](SEGURANCA.md).
+- Os apelidos são escritos com `textContent` ou `Util.escape`, então ninguém injeta HTML pelo nome.
 
 ---
 
@@ -126,12 +133,14 @@ rooms/ABCD
 
 | Quero... | Mexa em... |
 |---|---|
-| Os pontos | `Garimpo.RULES` em `js/config.js` |
+| Os pontos e o tempo mínimo por jogada | `Garimpo.RULES` em `js/config.js` |
+| As regras do jogo (o que é acerto, erro, troca) | `Engine.apply` em `js/engine.js` |
 | A dificuldade do robô | `LEVELS` em `js/robot.js` |
 | As cores e fontes | variáveis no topo de `css/style.css` e `PALETTE` em `js/gems.js` |
 | Os textos do tutorial | `SLIDES` em `js/tutorial.js` |
 | O desenho das gemas (ex.: sapos) | `gemSVG()` e `ROCK` em `js/gems.js` |
 | As regras de estrelas | `starsFor()` em `js/game.js` |
+| As regras de segurança do banco | `database.rules.json` |
 | A quantidade de gemas | botões `data-n` no `index.html` |
 
 ---
@@ -143,7 +152,7 @@ rooms/ABCD
 - Levar a menor para a vitrine: +50 (ou +70 se ela já estava no lugar).
 - Erro: −10 pontos e a sequência cai pela metade.
 
-**Nota final no Desafio e na sala** (`speedScore()` em `js/game.js`):
+**Nota final no Desafio e na sala** (`Engine.rate()` em `js/engine.js`):
 
 ```
 nota final = pontos das jogadas × 60 ÷ segundos jogados      (pontos por minuto)
@@ -151,6 +160,7 @@ nota final = pontos das jogadas × 60 ÷ segundos jogados      (pontos por minut
 
 - Não há tempo de referência nem robô na conta: quanto mais rápido e mais certeiro, maior a nota.
 - Depois de um erro no Desafio os botões travam por 1,5 s (`ERROR_LOCK_MS`). O erro custa tempo, e isso impede que chutar rápido compense.
+- O tempo nunca conta menos que 0,9 s por jogada (`MIN_ACTION_MS`), o que limita o ganho de quem joga com script.
 - Na sala o ranking soma as notas das rodadas. Quem ainda está jogando aparece com uma estimativa, que se acerta ao terminar.
 - No Treino não há relógio, então a nota é só a soma dos pontos das jogadas.
 - A corrida contra o robô só decide "venceu o robô" e as estrelas, e não entra na nota.
