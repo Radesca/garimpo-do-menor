@@ -20,13 +20,21 @@
         },
         "players": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('rooms/' + $code + '/status').val() !== 'over'",
-            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 14" },
+            "name": {
+              ".write": "auth != null && auth.uid === $uid && root.child('rooms/' + $code + '/status').val() !== 'over'",
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 14"
+            },
             "rounds": {
               "$round": {
                 ".validate": "$round === root.child('rooms/' + $code + '/current').val()",
-                "log": { ".validate": "newData.isString() && newData.val().length <= 400 && newData.val().matches(/^[kms]*$/) && now >= root.child('rooms/' + $code + '/rounds/' + $round + '/startAt').val() && !data.parent().child('finishedAt').exists()" },
-                "finishedAt": { ".validate": "newData.val() === now && !data.exists()" },
+                "log": {
+                  ".write": "auth != null && auth.uid === $uid && root.child('rooms/' + $code + '/status').val() !== 'over' && !data.parent().child('finishedAt').exists()",
+                  ".validate": "newData.isString() && newData.val().length <= 400 && newData.val().matches(/^[kms]*$/) && now >= root.child('rooms/' + $code + '/rounds/' + $round + '/startAt').val()"
+                },
+                "finishedAt": {
+                  ".write": "auth != null && auth.uid === $uid && root.child('rooms/' + $code + '/status').val() !== 'over' && !data.exists() && newData.exists()",
+                  ".validate": "newData.val() === now"
+                },
                 "$other": { ".validate": false }
               }
             },
