@@ -1,4 +1,4 @@
-﻿# Garimpo do Menor: guia do código
+# Garimpo do Menor: guia do código
 
 O jogo é feito só com HTML, CSS e JavaScript puros, sem bibliotecas (o Firebase e o gerador de QR são carregados por CDN, só para a sala).
 
