@@ -1,4 +1,4 @@
-﻿# Como configurar a Sala (Firebase)
+# Como configurar a Sala (Firebase)
 
 Leva uns 5 a 10 minutos e é grátis (plano Spark). Você só faz isso uma vez.
 

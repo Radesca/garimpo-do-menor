@@ -1,4 +1,4 @@
-﻿# Garimpo do Menor
+# Garimpo do Menor
 
 Jogo para aprender **selection sort** (ordenação por seleção). Você é o algoritmo: em cada rodada, procura a menor gema entre as que ainda não estão ordenadas e a leva para a primeira vaga livre da vitrine. Feito para apresentar em seminário, com uma versão em sala para a turma competir.
 
