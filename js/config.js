@@ -22,7 +22,7 @@ Garimpo.cfg = {
 
   Errar custa pontos e uma pausa curta (que também gasta tempo), então chutar rápido não compensa.
 */
-Garimpo.RULES = {
+Garimpo.RULES = Object.freeze({   // congelado: não dá para mudar os valores pelo console
   CORRECT: 10,         // pontos por decisão certa
   STREAK_STEP: 5,      // pontos extras por cada acerto seguido
   STREAK_CAP: 6,       // a sequência para de valer mais depois de tantos acertos
@@ -31,5 +31,6 @@ Garimpo.RULES = {
   ERROR_LOCK_MS: 1500, // pausa dos botões depois de um erro no Desafio, em milissegundos
   SWAP: 50,            // pontos por levar a menor para a vitrine
   SKIP: 70,            // pontos quando a menor já estava no lugar (nenhuma troca)
-  MIN_TIME_MS: 5000    // tempo mínimo usado na divisão, para a nota não disparar no começo
-};
+  MIN_TIME_MS: 5000,   // tempo mínimo usado na divisão, para a nota não disparar no começo
+  MIN_ACTION_MS: 900   // tempo mínimo contado por jogada: um script que joga sozinho rende, no máximo, o que um jogador muito rápido rende
+});

@@ -24,7 +24,7 @@ O modo solo funciona sem nenhuma configuração.
 
 ## Sala da turma (multijogador)
 
-Precisa de um banco **Firebase Realtime Database** (grátis). O passo a passo está em [docs/CONFIGURAR-SALA.md](docs/CONFIGURAR-SALA.md). Resumo:
+Precisa de um **Firebase** (grátis), com Realtime Database e login anônimo. O passo a passo está em [docs/CONFIGURAR-SALA.md](docs/CONFIGURAR-SALA.md), e o que está protegido contra trapaça (e o que não está) em [docs/SEGURANCA.md](docs/SEGURANCA.md). Resumo:
 
 1. Copie `firebase-config.example.js` para `firebase-config.js` e preencha com os dados do seu projeto e um PIN do professor.
 2. O `firebase-config.js` está no `.gitignore` e **não deve ser enviado ao GitHub**.
@@ -41,12 +41,15 @@ js/
   gems.js                   desenho das gemas e pedras
   effects.js                faíscas, pontos subindo e confete
   robot.js                  o Robô e os níveis de dificuldade
+  engine.js                 regras do jogo e pontos, sem tela (refaz partidas a partir do log)
+  ranking.js                ranking da sala, calculado a partir dos logs
   screens.js                troca de tela
-  game.js                   regras do jogo e desenho da partida
+  game.js                   desenho da partida e botões
   tutorial.js               "Como jogar"
   menu.js                   tela inicial
   rooms.js                  sala da turma (Firebase)
 firebase-config.example.js  modelo da configuração da sala
+database.rules.json         regras de segurança do Firebase (cole no console)
 docs/                       explicação do código e guia do Firebase
 ```
 

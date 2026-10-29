@@ -3,3 +3,4 @@ docs
 README.md
 firebase-config.example.js
 .env*
+database.rules.json
